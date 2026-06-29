@@ -1,0 +1,1 @@
+{"scripts":{"dev":"node server/index.js","start":"node server/index.js","build":"node --check server/index.js && node --check src/app.js"},"type":"module"}
