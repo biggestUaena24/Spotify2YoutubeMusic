@@ -1,5 +1,6 @@
-import http from 'node:http';
+import https from 'node:https';
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import crypto from 'node:crypto';
@@ -13,8 +14,10 @@ if (existsSync('.env')) {
 }
 
 const PORT = Number(process.env.PORT || 4000);
-const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
-const API_URL = process.env.API_URL || `http://localhost:${PORT}`;
+const APP_URL = process.env.APP_URL || `https://localhost:${PORT}`;
+const API_URL = process.env.API_URL || `https://localhost:${PORT}`;
+const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH || '.cert/localhost-key.pem';
+const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH || '.cert/localhost-cert.pem';
 const DEFAULT_PLAYLIST_TITLE = 'Spotify2Youtube';
 const CACHE_PATH = '.cache/youtube-matches.json';
 const sessions = new Map();
@@ -27,6 +30,14 @@ const sid = () => crypto.randomBytes(24).toString('hex');
 const state = () => crypto.randomBytes(18).toString('hex');
 const spotifyRedirect = () => process.env.SPOTIFY_REDIRECT_URI || `${API_URL}/auth/spotify/callback`;
 const googleRedirect = () => process.env.GOOGLE_REDIRECT_URI || `${API_URL}/auth/google/callback`;
+function ensureHttpsCredentials() {
+  if (!existsSync(HTTPS_KEY_PATH) || !existsSync(HTTPS_CERT_PATH)) {
+    mkdirSync(dirname(HTTPS_KEY_PATH), { recursive: true });
+    mkdirSync(dirname(HTTPS_CERT_PATH), { recursive: true });
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-sha256', '-days', '365', '-keyout', HTTPS_KEY_PATH, '-out', HTTPS_CERT_PATH, '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1']);
+  }
+  return { key: readFileSync(HTTPS_KEY_PATH), cert: readFileSync(HTTPS_CERT_PATH) };
+}
 const basic = (id, secret) => Buffer.from(`${id}:${secret}`).toString('base64');
 const normalizeText = (value) => String(value || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 const matchKey = (track) => track.isrc ? `isrc:${track.isrc}` : `text:${normalizeText(`${track.name} ${track.artists?.join(' ')}`)}`;
@@ -116,4 +127,4 @@ async function staticFile(pathname, res) {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
   try { send(res, 200, await readFile(file), { 'content-type': types[extname(file)] || 'application/octet-stream' }); } catch { send(res, 404, 'Not found'); }
 }
-http.createServer(route).listen(PORT, () => console.log(`Spotify2YoutubeMusic running at ${API_URL}`));
+https.createServer(ensureHttpsCredentials(), route).listen(PORT, () => console.log(`Spotify2YoutubeMusic running at ${API_URL}`));

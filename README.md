@@ -5,12 +5,16 @@ A same-origin Node.js + React web app that signs in with Spotify and Google/YouT
 ## Local setup
 
 1. Copy `.env.example` to `.env`.
-2. Create a Spotify app in the Spotify Developer Dashboard and set the callback URL to `http://localhost:4000/auth/spotify/callback`.
-3. In Google Cloud Console, enable **YouTube Data API v3**, configure the OAuth consent screen, create an OAuth **Web application** client, and add `http://localhost:4000/auth/google/callback` as an authorized redirect URI.
+2. Create a Spotify app in the Spotify Developer Dashboard and set the callback URL to `https://localhost:4000/auth/spotify/callback`.
+3. In Google Cloud Console, enable **YouTube Data API v3**, configure the OAuth consent screen, create an OAuth **Web application** client, and add `https://localhost:4000/auth/google/callback` as an authorized redirect URI.
 4. Fill in `.env` with the Spotify and Google client IDs/secrets.
-5. Run `npm run dev` and open `http://localhost:4000`.
+5. Run `npm run dev` and open `https://localhost:4000`.
 
-The frontend and backend are served from the same origin (`http://localhost:4000`). The React UI is loaded with an import map from `esm.sh`, so there is no dependency install step for local development.
+The frontend and backend are served from the same HTTPS origin (`https://localhost:4000`). The server auto-generates a local self-signed localhost certificate in `.cert/` if one does not already exist, so your browser may ask you to trust/continue through a local certificate warning. The React UI is loaded with an import map from `esm.sh`, so there is no dependency install step for local development.
+
+## HTTPS local development
+
+Spotify redirect URIs must be HTTPS, so the app runs locally at `https://localhost:4000`. Register the HTTPS Spotify and Google callback URLs in each developer console. For production, set `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to real certificate files or run the Node app behind a trusted HTTPS reverse proxy.
 
 ## Matching, batching, and playlist selection
 
